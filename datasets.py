@@ -12,6 +12,7 @@ def infiniteloop(dataloader):
 class LF5x5_Dataset(Dataset):
     def __init__(self, root, size=None):
 
+        # Transformation includes resizing and converting to tensor
         transforms_list = []
         if size is not None:
             transforms_list.append(transforms.Resize(size))
@@ -19,11 +20,11 @@ class LF5x5_Dataset(Dataset):
         self.transform = transforms.Compose(transforms_list)
 
         self.imgs, self.masks = [], []
-
         training_names = []
         for name in sorted(glob.glob(f"{root}/*.png")):
             r = int(name.split('/')[-1].split('_')[1])
             c = int(name.split('/')[-1].split('_')[2])
+            # Only consider images that are multiples of 4
             if r % 4 > 0 or c % 4 > 0:
                 continue
             training_names.append(name.split("/")[-1])
