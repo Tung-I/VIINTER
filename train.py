@@ -12,7 +12,8 @@ from datasets import LLFF_Dataset, LF5x5_Dataset, infiniteloop
 from networks import VIINTER
 from utils import linterp
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cuda')
 ROOT = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == "__main__":
@@ -38,17 +39,20 @@ if __name__ == "__main__":
     parser.add_argument('--silent', action='store_true')
 
     args = parser.parse_args()
-
     exp_dir = f'{ROOT}/exps/{args.dset}/{args.scene}/{args.exp_name}'
-
     if args.dset == 'LF':
-        dset = LF5x5_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+        dset = LF5x5_Dataset(f'{args.data_dir}/{args.scene}', size=args.sizeWFAWEFWEFWEA)
 
         val_start = 0
         val_end = 24
+    elif args.dset == 'pair':
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+        val_start = 0
+        val_end = 1
 
     elif args.dset == 'LLFF':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+        # dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}/images_8', size=args.size)
 
         val_start = 0
         val_end = len(dset) - 1
@@ -81,12 +85,12 @@ if __name__ == "__main__":
         print("Dataset not supported")
         exit()
 
+    # Create output directory
     if args.clip != 0.0:
         exp_dir += f'_clip_{args.clip}'
     exp_dir += f'_dim{args.z_dim}'
     exp_dir += f'_W{args.W}'
     exp_dir += f'_D{args.D}'
-
     os.makedirs(exp_dir, exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out', exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out/final_frames', exist_ok=True)
@@ -95,7 +99,9 @@ if __name__ == "__main__":
     inter_fn = linterp
     if args.p == 0: args.p = None
 
-    net = VIINTER(n_emb = len(dset), norm_p = args.p, inter_fn=inter_fn, D=args.D, z_dim = args.z_dim, in_feat=2, out_feat=3, W=args.W, with_res=False, with_norm=True)
+    # Initialize network
+    net = VIINTER(n_emb=len(dset), norm_p=args.p, inter_fn=inter_fn, D=args.D, 
+                  z_dim = args.z_dim, in_feat=2, out_feat=3, W=args.W, with_res=False, with_norm=True)
     net = net.to(DEVICE)
     train_loader = DataLoader(dset, batch_size=1, shuffle=True, drop_last=False, num_workers=4, pin_memory=True)
 
@@ -117,7 +123,7 @@ if __name__ == "__main__":
 
         im_feats = []
         imgs = []
-        print("Precomputing CLIP faatures")
+        print("Precomputing CLIP features")
         with torch.no_grad():
             for im in dset.imgs:
                 if min_side > 256:
@@ -154,6 +160,7 @@ if __name__ == "__main__":
 
     test_psnrs, test_ssims = [], []
 
+    # Start training
     steps = 0
     loop = tqdm.trange(num_steps, disable=args.silent)
     train_loader = infiniteloop(train_loader)
@@ -224,17 +231,17 @@ if __name__ == "__main__":
     for i, f in enumerate(frames_out):
         imageio.imsave(f'{exp_dir}/val_out/final_frames/{i}.png', f)
 
-    training_psnr, training_ssim = 0, 0
-    for i in range(len(dset)):
-        with torch.no_grad():
-            out = torch.zeros((grid_inp.shape[-2], 3))
-            _b = 8192 * 8
-            for ib in range(0, len(out), _b):
-                out[ib:ib+_b] = net(grid_inp[:, ib:ib+_b].to(DEVICE), torch.LongTensor([i]).to(DEVICE)).cpu()
-            generated = torch.clamp(out.view(dset.hw[0], dset.hw[1], 3), 0, 1)
-            out = np.uint8(255 * np.clip(generated.numpy(), 0, 1))
-            training_mse = F.mse_loss(dset.imgs[i].permute(1, 2, 0), generated).item()
-            training_psnr += 10 * np.log10(1 / training_mse)
-            training_ssim += ssim(np.clip(generated.numpy(), 0, 1), dset.imgs[i].permute(1, 2, 0).numpy(), channel_axis=2, multichannel=True)
-    training_psnr, training_ssim = [training_psnr / len(dset)], [training_ssim / len(dset)]
-    print(f'Training set | PSNR: {training_psnr[0]} | SSIM: {training_ssim[0]}')
+    # training_psnr, training_ssim = 0, 0
+    # for i in range(len(dset)):
+    #     with torch.no_grad():
+    #         out = torch.zeros((grid_inp.shape[-2], 3))
+    #         _b = 8192 * 8
+    #         for ib in range(0, len(out), _b):
+    #             out[ib:ib+_b] = net(grid_inp[:, ib:ib+_b].to(DEVICE), torch.LongTensor([i]).to(DEVICE)).cpu()
+    #         generated = torch.clamp(out.view(dset.hw[0], dset.hw[1], 3), 0, 1)
+    #         out = np.uint8(255 * np.clip(generated.numpy(), 0, 1))
+    #         training_mse = F.mse_loss(dset.imgs[i].permute(1, 2, 0), generated).item()
+    #         training_psnr += 10 * np.log10(1 / training_mse)
+    #         training_ssim += ssim(np.clip(generated.numpy(), 0, 1), dset.imgs[i].permute(1, 2, 0).numpy(), channel_axis=2, multichannel=True)
+    # training_psnr, training_ssim = [training_psnr / len(dset)], [training_ssim / len(dset)]
+    # print(f'Training set | PSNR: {training_psnr[0]} | SSIM: {training_ssim[0]}')

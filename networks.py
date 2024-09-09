@@ -28,13 +28,15 @@ class SineLayer(nn.Module):
             return torch.sin(self.omega_0 * self.linear(input))
 
 class CondSIREN(nn.Module):
-    def __init__(self, n_emb, norm_p = None, inter_fn = None, first_omega_0=30, hidden_omega_0=30, D=8, z_dim = 64, in_feat=2, out_feat=3, W=256, with_res=True, with_norm=True):
+    def __init__(self, n_emb, norm_p = None, inter_fn = None, first_omega_0=30, 
+                 hidden_omega_0=30, D=8, z_dim = 64, in_feat=2, out_feat=3, W=256, 
+                 with_res=True, with_norm=True):
         super().__init__()
         self.norm_p = norm_p
         if self.norm_p is None or self.norm_p == -1:
-            self.emb = nn.Embedding(num_embeddings = n_emb, embedding_dim = z_dim)
+            self.emb = nn.Embedding(num_embeddings=n_emb, embedding_dim=z_dim)
         else:
-            self.emb = nn.Embedding(num_embeddings = n_emb, embedding_dim = z_dim, max_norm=1.0, norm_type=norm_p)
+            self.emb = nn.Embedding(num_embeddings=n_emb, embedding_dim=z_dim, max_norm=1.0, norm_type=norm_p)
 
         for i in range(D+1):
             if i == 0:
@@ -89,15 +91,29 @@ class CondSIREN(nn.Module):
 
 class VIINTER(CondSIREN):
     def mix_forward(self, xy_grid_flattened, batch_size=4, chunked=False):
+        """
+        Args:
+            xy_grid_flattened: (N, 2)
+            batch_size: int
+            chunked: bool
+        Returns:
+            rgb: (N, 3)
+            rand_inds: (N, 2)
+            alphas: (N, 1)
+            z: (N, z_dim)
+        """
+        # Get the embedding of the indices
         N = self.emb.num_embeddings
         all_inds = torch.arange(0, N).type(torch.LongTensor).to(xy_grid_flattened.device)
-        zs = self.emb(all_inds)
+        zs = self.emb(all_inds)  # (N, z_dim)
         zs = self.normalize_z(zs)
 
+        # Sample two random indices
         rand_inds = torch.randint(0, N, size=(batch_size * 2, 1)).long().squeeze(1)
-
         slt_zs = zs[rand_inds].reshape(batch_size, 2, -1)
         alphas = torch.rand_like(slt_zs[:, 0:1, 0:1])
+
+        # Interpolate between the two embeddings
         z = self.inter_fn(val=alphas, low=slt_zs[:, 0], high=slt_zs[:, 1]).squeeze(1)
         x = xy_grid_flattened.repeat(batch_size, 1, 1)
 
