@@ -19,8 +19,9 @@ ROOT = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp_name', default='exp', type=str)
-    parser.add_argument('--data_dir', default='data', type=str)
-    parser.add_argument('--dset', default='LF', type=str)
+    parser.add_argument('--data_dir', default='/home/tungi/datasets', type=str)
+    parser.add_argument('--dset', default='LLFF', type=str)
+    parser.add_argument('--category', default='trex', type=str)
     parser.add_argument('--scene', default='knights', type=str)
     parser.add_argument('--size', help='if not None, resize image', default=None, type=int)
 
@@ -39,14 +40,14 @@ if __name__ == "__main__":
     parser.add_argument('--silent', action='store_true')
 
     args = parser.parse_args()
-    exp_dir = f'{ROOT}/exps/{args.dset}/{args.scene}/{args.exp_name}'
+    exp_dir = f'{ROOT}/exps/{args.dset}_{args.category}_{args.scene}/{args.exp_name}'
     if args.dset == 'LF':
-        dset = LF5x5_Dataset(f'{args.data_dir}/{args.scene}', size=args.sizeWFAWEFWEFWEA)
+        dset = LF5x5_Dataset(f'{args.data_dir}/{args.category}/{args.scene}', size=args.sizeWFAWEFWEFWEA)
 
         val_start = 0
         val_end = 24
-    elif args.dset == 'pair':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+    elif args.dset == 'dynerf':
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
         val_start = 0
         val_end = 1
 
@@ -215,7 +216,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 z0 = net.ret_z(torch.LongTensor([val_start]).to(DEVICE)).squeeze()
                 z1 = net.ret_z(torch.LongTensor([val_end]).to(DEVICE)).squeeze()
-                lin_sample_num = 30
+                lin_sample_num = 21
                 for a in torch.linspace(0, 1, lin_sample_num):
                     zi = inter_fn(a, z0, z1).unsqueeze(0)
                     out = torch.zeros((grid_inp.shape[-2], 3))
