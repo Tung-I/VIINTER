@@ -1,5 +1,6 @@
 import os, tqdm, argparse, imageio, clip
 import numpy as np
+import time
 from PIL import Image
 from skimage.metrics import structural_similarity as ssim
 
@@ -113,6 +114,7 @@ if __name__ == "__main__":
     ds_ratio = min_side // 256
     if args.clip > 0.0:
         clip_model, preprocess = clip.load("ViT-B/32")
+        # clip_model, preprocess = clip.load("RN50")
         clip_model = clip_model.to(DEVICE).eval()
         clip_im_size = 224
         clip_transform = torchvision.transforms.Compose([
@@ -165,6 +167,12 @@ if __name__ == "__main__":
     steps = 0
     loop = tqdm.trange(num_steps, disable=args.silent)
     train_loader = infiniteloop(train_loader)
+
+    # Initialize time tracking
+    start_time = time.time()  # Record the start time
+    save_times = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300]  # Times in seconds when to save
+    save_index = 0  # Index to track the next time threshold
+
     for i in loop:
         img, ind = next(train_loader)
 
@@ -197,52 +205,12 @@ if __name__ == "__main__":
         psnr = 10 * np.log10(1 / mse_loss.item())
         steps += 1; loop.set_postfix(PSNR = psnr)
 
-        if steps % args.save_freq == 0:
-            if args.clip > 0.0:
-                generated = torch.clamp(mix_out[0].detach().cpu(), 0, 1).numpy()
-                Image.fromarray(np.uint8(255 * generated)).save(f'{exp_dir}/val_out/{steps}_mix.jpg')
-            torch.save(net.state_dict(), f'{exp_dir}/net.pth')
-            net.eval()
-            with torch.no_grad():
-                out = torch.zeros((grid_inp.shape[-2], 3))
-                _b = 8192 * 4
-                for ib in range(0, len(out), _b):
-                    out[ib:ib+_b] = net(grid_inp[:, ib:ib+_b], torch.LongTensor([0]).to(DEVICE)).cpu()
-            net.train()
-            generated = torch.clamp(out.view(dset.hw[0], dset.hw[1], 3), 0, 1).numpy()
-            Image.fromarray(np.uint8(255 * generated)).save(f'{exp_dir}/val_out/{steps}.jpg')
+        elapsed_time = time.time() - start_time
+        if save_index < len(save_times) and elapsed_time >= save_times[save_index]:
+            curr_save_timing = save_times[save_index]
+            save_index += 1  # Move to the next time threshold
 
-            frames_out = []
-            with torch.no_grad():
-                z0 = net.ret_z(torch.LongTensor([val_start]).to(DEVICE)).squeeze()
-                z1 = net.ret_z(torch.LongTensor([val_end]).to(DEVICE)).squeeze()
-                lin_sample_num = 21
-                for a in torch.linspace(0, 1, lin_sample_num):
-                    zi = inter_fn(a, z0, z1).unsqueeze(0)
-                    out = torch.zeros((grid_inp.shape[-2], 3))
-                    _b = 8192 * 4
-                    for ib in range(0, len(out), _b):
-                        out[ib:ib+_b] = net.forward_with_z(grid_inp[:, ib:ib+_b].to(DEVICE), zi).cpu()
-                    generated = torch.clamp(out.view(dset.hw[0], dset.hw[1], 3), 0, 1).numpy()
-                    frames_out.append(np.uint8(255 * np.clip(generated, 0, 1)))
-            imageio.mimsave(f'{exp_dir}/val_out/{steps}.gif', frames_out, fps=10)
+            # Save the checkpoint
+            torch.save(net.state_dict(), f'{exp_dir}_{curr_save_timing}/net.pth')
 
-    torch.save(net.state_dict(), f'{exp_dir}/net.pth')
-
-    # for i, f in enumerate(frames_out):
-    #     imageio.imsave(f'{exp_dir}/val_out/final_frames/{i}.png', f)
-
-    # training_psnr, training_ssim = 0, 0
-    # for i in range(len(dset)):
-    #     with torch.no_grad():
-    #         out = torch.zeros((grid_inp.shape[-2], 3))
-    #         _b = 8192 * 8
-    #         for ib in range(0, len(out), _b):
-    #             out[ib:ib+_b] = net(grid_inp[:, ib:ib+_b].to(DEVICE), torch.LongTensor([i]).to(DEVICE)).cpu()
-    #         generated = torch.clamp(out.view(dset.hw[0], dset.hw[1], 3), 0, 1)
-    #         out = np.uint8(255 * np.clip(generated.numpy(), 0, 1))
-    #         training_mse = F.mse_loss(dset.imgs[i].permute(1, 2, 0), generated).item()
-    #         training_psnr += 10 * np.log10(1 / training_mse)
-    #         training_ssim += ssim(np.clip(generated.numpy(), 0, 1), dset.imgs[i].permute(1, 2, 0).numpy(), channel_axis=2, multichannel=True)
-    # training_psnr, training_ssim = [training_psnr / len(dset)], [training_ssim / len(dset)]
-    # print(f'Training set | PSNR: {training_psnr[0]} | SSIM: {training_ssim[0]}')
+           
