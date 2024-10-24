@@ -97,7 +97,7 @@ if __name__ == "__main__":
     os.makedirs(f'{exp_dir}/val_out', exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out/final_frames', exist_ok=True)
 
-    bsize = args.bsize; num_steps = args.iters; save_freq = 1000
+    bsize = args.bsize; num_steps = args.iters; save_freq = 10000
     inter_fn = linterp
     if args.p == 0: args.p = None
 
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
     # Initialize time tracking
     start_time = time.time()  # Record the start time
-    save_times = [30, 60, 90, 120, 150, 180, 210, 240, 270, 300]  # Times in seconds when to save
+    save_times = [60, 120, 7200, 14400]  # Times in seconds when to save
     save_index = 0  # Index to track the next time threshold
 
     for i in loop:

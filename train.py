@@ -35,7 +35,7 @@ if __name__ == "__main__":
     parser.add_argument('--W', default=512, type=int)
     parser.add_argument('--D', default=8, type=int)
     parser.add_argument('--bsize', default=8192, type=int)
-    parser.add_argument('--iters', default=300000, type=int)
+    parser.add_argument('--iters', default=200000, type=int)
     parser.add_argument('--save_freq', default=20000, type=int)
     parser.add_argument('--silent', action='store_true')
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     os.makedirs(f'{exp_dir}/val_out', exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out/final_frames', exist_ok=True)
 
-    bsize = args.bsize; num_steps = args.iters; save_freq = 1000
+    bsize = args.bsize; num_steps = args.iters; save_freq = 20000
     inter_fn = linterp
     if args.p == 0: args.p = None
 
@@ -201,7 +201,7 @@ if __name__ == "__main__":
             if args.clip > 0.0:
                 generated = torch.clamp(mix_out[0].detach().cpu(), 0, 1).numpy()
                 Image.fromarray(np.uint8(255 * generated)).save(f'{exp_dir}/val_out/{steps}_mix.jpg')
-            torch.save(net.state_dict(), f'{exp_dir}/net.pth')
+            torch.save(net.state_dict(), f'{exp_dir}/net_{steps}.pth')
             net.eval()
             with torch.no_grad():
                 out = torch.zeros((grid_inp.shape[-2], 3))
