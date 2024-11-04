@@ -96,7 +96,7 @@ if __name__ == "__main__":
     os.makedirs(f'{exp_dir}/val_out', exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out/final_frames', exist_ok=True)
 
-    bsize = args.bsize; num_steps = args.iters; save_freq = 1000
+    bsize = args.bsize; num_steps = args.iters; save_freq = 10000
     inter_fn = linterp
     if args.p == 0: args.p = None
 

@@ -8,6 +8,7 @@ import argparse
 from networks import VIINTER
 from utils import linterp
 from tqdm import tqdm
+import time
 
 device = torch.device('cuda')
 
@@ -18,13 +19,17 @@ def main(args):
     dataset = args.dataset
     inter_fn = linterp
 
-    output_dir = osp.join(data_dir, 'viinter')
+    output_dir = osp.join(data_dir, 'viinter/inference')
     frames_dir = osp.join(output_dir, 'frames')
     if not os.path.exists(frames_dir):
         os.makedirs(frames_dir)
 
     if dataset == 'dynerf':
         H, W = (1014, 1352)
+    elif dataset == 'llff':
+        H, W = (756, 1008)
+    elif dataset == 'mipnerf360':
+        H, W = (822, 1237)
     else:
         raise ValueError(f'Unknown dataset: {dataset}')
 
@@ -43,6 +48,7 @@ def main(args):
 
     # Infer
     frames_out = []
+    start_time = time.time()
     with torch.no_grad():
         z0 = net.ret_z(torch.LongTensor([0]).to(device)).squeeze()
         z1 = net.ret_z(torch.LongTensor([1]).to(device)).squeeze()
@@ -54,13 +60,17 @@ def main(args):
                 out[ib:ib+_b] = net.forward_with_z(grid_inp[:, ib:ib+_b], zi).cpu()
             generated = torch.clamp(out.view(H, W, 3), 0, 1).numpy()  # Adjust 480, 640 to your grid size
             frames_out.append(np.uint8(255 * np.clip(generated, 0, 1)))
+    infer_time = time.time() - start_time
+    infer_fps = lin_sample_num / infer_time
+    print(f'Inference time: {infer_time:.2f}s, FPS: {infer_fps:.2f}')
 
-    # Save frames as GIF
-    imageio.mimsave(f'{output_dir}/animation.gif', frames_out, fps=21)
+    if args.save_frames:
+        # Save frames as GIF
+        imageio.mimsave(f'{output_dir}/animation.gif', frames_out, fps=21)
 
-    # Save each frame as PNG
-    for i, f in enumerate(frames_out):
-        imageio.imsave(f'{frames_dir}/{i:03d}.png', f)
+        # Save each frame as PNG
+        for i, f in enumerate(frames_out):
+            imageio.imsave(f'{frames_dir}/{i:03d}.png', f)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Infer and save intermediate frames from a trained model.")
@@ -72,6 +82,7 @@ def parse_args():
     parser.add_argument('--W', default=512, type=int)
     parser.add_argument('--D', default=8, type=int)
     parser.add_argument('--z_dim', default=128, type=int)
+    parser.add_argument('--save_frames', action='store_true')
     return parser.parse_args()
 
 if __name__ == '__main__':

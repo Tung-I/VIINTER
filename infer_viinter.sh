@@ -1,0 +1,1 @@
+python infer.py --model_path exps/mipnerf360_room_cam01_cam02_0000/200000_clip_0.01_dim128_W512_D8/net_90000.pth --data_dir ~/datasets/mipnerf360/room/view_pair/cam01_cam02_0000/ --dataset mipnerf360
