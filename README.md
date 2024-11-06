@@ -1,15 +1,35 @@
 # VIINTER
-Implementation of VIINTER: View Interpolation With Implicit Neural Representations of Images
 
-# Quick Start Example
-Dependencies: torch 1.12, [clip](https://github.com/openai/CLIP), imageio, tqdm, skimage, argparse, PIL
 
-### Train a Stanford Light Field scene
-1. Download ```Chess``` scene [here](http://lightfield.stanford.edu/lfs.html)
-2. Move ```rectified``` to ```data/LF``` and rename as ```data/LF/Chess```
-3. ```python train.py --data_dir data/LF --dset LF --scene Chess --clip 0.0```
+## Environment
+- cuda 11.8
+- python 3.10
 
-### Train a LLFF scene
-1. Download ```flower``` scene [here](https://github.com/bmild/nerf)
-2. Move ```flower/images_4``` under  ```data/LLFF``` and rename as ```data/LLFF/flower```
-3. ```python train.py --data_dir data/LLFF --dset LLFF --scene flower --clip 0.01```
+1. Create a new conda env:
+```shell
+conda create -n viinter python=3.10
+source activate viinter
+```
+
+2. Install the packages by:
+```shell
+./install_env.sh 
+```
+
+## Training
+To train the first dataset:
+```shell
+./train_dynerf.sh PATH-TO-DATASET/dataset_for_A100
+```
+
+To train the second:
+```shell
+./train_mipnerf.sh PATH-TO-DATASET/dataset_for_A100
+```
+
+And, the last:
+```shell
+./train_llff.sh PATH-TO-DATASET/dataset_for_A100
+```
+
+The checkpoints should be saved in ./exps

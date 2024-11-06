@@ -35,9 +35,11 @@ if __name__ == "__main__":
     parser.add_argument('--W', default=512, type=int)
     parser.add_argument('--D', default=8, type=int)
     parser.add_argument('--bsize', default=8192, type=int)
-    parser.add_argument('--iters', default=300000, type=int)
-    parser.add_argument('--save_freq', default=20000, type=int)
+    parser.add_argument('--iters', default=200000, type=int)
+    parser.add_argument('--save_freq', default=10000, type=int)
     parser.add_argument('--silent', action='store_true')
+    parser.add_argument('--checkpoint', default=None, type=str)
+    parser.add_argument('--steps', default=None, type=int)
 
     args = parser.parse_args()
     exp_dir = f'{ROOT}/exps/{args.dset}_{args.category}_{args.scene}/{args.exp_name}'
@@ -51,36 +53,51 @@ if __name__ == "__main__":
         val_start = 0
         val_end = 1
 
-    elif args.dset == 'LLFF':
-        # dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}/images_8', size=args.size)
-
+    elif args.dset == 'llff':
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
         val_start = 0
-        val_end = len(dset) - 1
-        if args.scene == 'trex':
-            val_start = 7
-            val_end = 14
-        if args.scene == 'room':
-            val_start = 10
-            val_end = 15
-        if args.scene == 'fern':
-            val_start = 0
-            val_end = 4
-        if args.scene == 'fortress':
-            val_start = 0
-            val_end = 5
-        if args.scene == 'flower':
-            val_start = 7
-            val_end = 13
-        if args.scene == 'horns':
-            val_start = 0
-            val_end = 7
-        if args.scene == 'leaves':
-            val_start = 9
-            val_end = 14
-        if args.scene == 'orchids':
-            val_start = 0
-            val_end = 3
+        val_end = 1
+
+    elif args.dset == 'ilfv':
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        val_start = 0
+        val_end = 1
+
+    elif args.dset == 'mipnerf360':
+        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        val_start = 0
+        val_end = 1
+
+    # elif args.dset == 'LLFF':
+    #     # dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}', size=args.size)
+    #     dset = LLFF_Dataset(f'{args.data_dir}/{args.scene}/images_8', size=args.size)
+
+    #     val_start = 0
+    #     val_end = len(dset) - 1
+    #     if args.scene == 'trex':
+    #         val_start = 7
+    #         val_end = 14
+    #     if args.scene == 'room':
+    #         val_start = 10
+    #         val_end = 15
+    #     if args.scene == 'fern':
+    #         val_start = 0
+    #         val_end = 4
+    #     if args.scene == 'fortress':
+    #         val_start = 0
+    #         val_end = 5
+    #     if args.scene == 'flower':
+    #         val_start = 7
+    #         val_end = 13
+    #     if args.scene == 'horns':
+    #         val_start = 0
+    #         val_end = 7
+    #     if args.scene == 'leaves':
+    #         val_start = 9
+    #         val_end = 14
+    #     if args.scene == 'orchids':
+    #         val_start = 0
+    #         val_end = 3
 
     else:
         print("Dataset not supported")
@@ -96,7 +113,7 @@ if __name__ == "__main__":
     os.makedirs(f'{exp_dir}/val_out', exist_ok=True)
     os.makedirs(f'{exp_dir}/val_out/final_frames', exist_ok=True)
 
-    bsize = args.bsize; num_steps = args.iters; save_freq = 10000
+    bsize = args.bsize; num_steps = args.iters; save_freq = 20000
     inter_fn = linterp
     if args.p == 0: args.p = None
 
@@ -161,10 +178,20 @@ if __name__ == "__main__":
 
     test_psnrs, test_ssims = [], []
 
+
+
     # Start training
     steps = 0
     loop = tqdm.trange(num_steps, disable=args.silent)
     train_loader = infiniteloop(train_loader)
+
+    if args.checkpoint is not None:
+        print(f"Loading checkpoint from {args.checkpoint}")
+        net.load_state_dict(torch.load(args.checkpoint))
+        steps = args.steps
+        print(f"Resuming training from step {steps}")
+
+
     for i in loop:
         img, ind = next(train_loader)
 
@@ -201,7 +228,7 @@ if __name__ == "__main__":
             if args.clip > 0.0:
                 generated = torch.clamp(mix_out[0].detach().cpu(), 0, 1).numpy()
                 Image.fromarray(np.uint8(255 * generated)).save(f'{exp_dir}/val_out/{steps}_mix.jpg')
-            torch.save(net.state_dict(), f'{exp_dir}/net.pth')
+            torch.save(net.state_dict(), f'{exp_dir}/net_{steps}.pth')
             net.eval()
             with torch.no_grad():
                 out = torch.zeros((grid_inp.shape[-2], 3))
