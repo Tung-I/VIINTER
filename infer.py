@@ -9,8 +9,16 @@ from networks import VIINTER
 from utils import linterp
 from tqdm import tqdm
 import time
+from fvcore.nn import FlopCountAnalysis
 
 device = torch.device('cuda')
+
+# Measure FLOPs of the model
+def measure_flops(net, grid_inp, zi):
+    # Only measure FLOPs of a single forward pass with `grid_inp` and `zi`
+    with torch.no_grad():
+        flops = FlopCountAnalysis(net, (grid_inp, zi))
+    return flops.total()
 
 def main(args):
     model_path = args.model_path
@@ -29,7 +37,9 @@ def main(args):
     elif dataset == 'llff':
         H, W = (756, 1008)
     elif dataset == 'mipnerf360':
-        H, W = (822, 1237)
+        # H, W = (822, 1237)
+        H, W = (1039, 1558)
+        # H, W = (519, 779)
     else:
         raise ValueError(f'Unknown dataset: {dataset}')
 
@@ -48,10 +58,12 @@ def main(args):
 
     # Infer
     frames_out = []
+    flops_sum = 0
     start_time = time.time()
     with torch.no_grad():
         z0 = net.ret_z(torch.LongTensor([0]).to(device)).squeeze()
         z1 = net.ret_z(torch.LongTensor([1]).to(device)).squeeze()
+
         for a in tqdm(torch.linspace(0, 1, lin_sample_num)):
             zi = inter_fn(a, z0, z1).unsqueeze(0)
             out = torch.zeros((grid_inp.shape[-2], 3))
@@ -60,10 +72,14 @@ def main(args):
                 out[ib:ib+_b] = net.forward_with_z(grid_inp[:, ib:ib+_b], zi).cpu()
             generated = torch.clamp(out.view(H, W, 3), 0, 1).numpy()  # Adjust 480, 640 to your grid size
             frames_out.append(np.uint8(255 * np.clip(generated, 0, 1)))
+
+            flops = measure_flops(net, grid_inp[:, ib:ib+_b], zi)
+            flops_sum += flops
+
     infer_time = time.time() - start_time
     infer_fps = lin_sample_num / infer_time
     print(f'Inference time: {infer_time:.2f}s, FPS: {infer_fps:.2f}')
-
+    print(f'Average GFLOPs: {flops_sum / lin_sample_num / 1e9:.2f}')
     if args.save_frames:
         # Save frames as GIF
         imageio.mimsave(f'{output_dir}/animation.gif', frames_out, fps=21)
@@ -71,6 +87,7 @@ def main(args):
         # Save each frame as PNG
         for i, f in enumerate(frames_out):
             imageio.imsave(f'{frames_dir}/{i:03d}.png', f)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Infer and save intermediate frames from a trained model.")

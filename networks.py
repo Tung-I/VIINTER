@@ -79,14 +79,21 @@ class CondSIREN(nn.Module):
         Z_mat = self.emb.weight
         return self.normalize_z(Z_mat)
 
-    def forward(self, x, ind, ret_z=False):
-        z = self.emb(ind)
-        z = self.normalize_z(z)
-        rgb = self.forward_with_z(x, z)
+    # def forward(self, x, ind, ret_z=False):
+    #     z = self.emb(ind)
+    #     z = self.normalize_z(z)
+    #     rgb = self.forward_with_z(x, z)
 
-        if ret_z:
-            return rgb, z
+    #     if ret_z:
+    #         return rgb, z
 
+    #     return rgb
+
+    def forward(self, x, z):
+        xyz_ = torch.cat([x, z.unsqueeze(1).repeat(1, x.shape[1], 1)], dim = -1)
+        for i in range(self.D):
+            xyz_ = getattr(self, f'layer_{i+1}')(xyz_)
+        rgb = self.final_rgb(xyz_)
         return rgb
 
 class VIINTER(CondSIREN):
