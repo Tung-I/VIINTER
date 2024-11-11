@@ -21,8 +21,8 @@ if __name__ == "__main__":
     parser.add_argument('--exp_name', default='exp', type=str)
     parser.add_argument('--data_dir', default='/home/tungi/datasets', type=str)
     parser.add_argument('--dset', default='LLFF', type=str)
-    parser.add_argument('--category', default='trex', type=str)
-    parser.add_argument('--scene', default='knights', type=str)
+    # parser.add_argument('--category', default='trex', type=str)
+    # parser.add_argument('--scene', default='knights', type=str)
     parser.add_argument('--size', help='if not None, resize image', default=None, type=int)
 
     parser.add_argument('--start_lr', default=1e-5, type=float)
@@ -38,33 +38,48 @@ if __name__ == "__main__":
     parser.add_argument('--iters', default=200000, type=int)
     parser.add_argument('--save_freq', default=10000, type=int)
     parser.add_argument('--silent', action='store_true')
-    parser.add_argument('--checkpoint', default=None, type=str)
+    # parser.add_argument('--checkpoint', default=None, type=str)
     parser.add_argument('--steps', default=None, type=int)
 
+    parser.add_argument('--im0_id', type=int, help='The id of the first image.')
+    parser.add_argument('--im1_id', type=int, help='The id of the second image.')
+    parser.add_argument('--category', type=str, help='The name of the category (flame_steak).')
+    parser.add_argument('--frame_id', type=int, help='The frame id to use.')
+    parser.add_argument('--resume', action='store_true')
+
     args = parser.parse_args()
-    exp_dir = f'{ROOT}/exps/{args.dset}_{args.category}_{args.scene}/{args.exp_name}'
+
+    im0_id = f"cam{args.im0_id:02d}"  # ex. cam01
+    im1_id = f"cam{args.im1_id:02d}" 
+    frame_id = f"{args.frame_id:04d}"
+    category = args.category   
+    dataset = args.dset
+    exp_dir = f'{ROOT}/exps/{dataset}_{category}_{im0_id}_{im1_id}_{frame_id}/{args.exp_name}'
+    scene_dir = f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{im0_id}_{im1_id}_{frame_id}'
+
+    # exp_dir = f'{ROOT}/exps/{args.dset}_{args.category}_{args.scene}/{args.exp_name}'
     if args.dset == 'LF':
         dset = LF5x5_Dataset(f'{args.data_dir}/{args.category}/{args.scene}', size=args.sizeWFAWEFWEFWEA)
 
         val_start = 0
         val_end = 24
     elif args.dset == 'dynerf':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        dset = LLFF_Dataset(scene_dir, size=args.size)
         val_start = 0
         val_end = 1
 
     elif args.dset == 'llff':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        dset = LLFF_Dataset(scene_dir, size=args.size)
         val_start = 0
         val_end = 1
 
     elif args.dset == 'ilfv':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        dset = LLFF_Dataset(scene_dir, size=args.size)
         val_start = 0
         val_end = 1
 
     elif args.dset == 'mipnerf360':
-        dset = LLFF_Dataset(f'{args.data_dir}/{args.dset}/{args.category}/view_pair/{args.scene}', size=args.size)
+        dset = LLFF_Dataset(scene_dir, size=args.size)
         val_start = 0
         val_end = 1
 
@@ -185,9 +200,10 @@ if __name__ == "__main__":
     loop = tqdm.trange(num_steps, disable=args.silent)
     train_loader = infiniteloop(train_loader)
 
-    if args.checkpoint is not None:
-        print(f"Loading checkpoint from {args.checkpoint}")
-        net.load_state_dict(torch.load(args.checkpoint))
+    if args.resume:
+        checkpoint_path = f'{exp_dir}/net_{args.steps}.pth'
+        print(f"Loading checkpoint from {checkpoint_path}")
+        net.load_state_dict(torch.load(checkpoint_path))
         steps = args.steps
         print(f"Resuming training from step {steps}")
 
