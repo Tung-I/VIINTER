@@ -25,11 +25,11 @@ def main(args):
     frame_id = f"{args.frame_id:04d}"
     category = args.category    
 
-    model_path = f'exps/{dataset}_{category}_{im0_id}_{im1_id}_{frame_id}/200000_clip_0.01_dim128_W{args.W}_D8/net_{args.iter}.pth'
-    data_dir = f'/home/ubuntu/datasets/{dataset}/{category}/view_pair/{im0_id}_{im1_id}_{frame_id}'
+    model_path = f'{args.ckpt_dir}/{dataset}_{category}_{im0_id}_{im1_id}_{frame_id}/200000_clip_0.01_dim128_W{args.W}_D8/net_{args.iter}.pth'
+    data_dir = f'{args.data_dir}/{dataset}/{category}/view_pair/{im0_id}_{im1_id}_{frame_id}'
 
 
-    output_dir = osp.join(data_dir, f'viinter_{args.W}/inference')
+    output_dir = osp.join(data_dir, f'viinter_{args.W}_{args.iter}/inference')
     frames_dir = osp.join(output_dir, 'frames')
     pathlib.Path(frames_dir).mkdir(parents=True, exist_ok=True)
 
@@ -89,8 +89,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Infer and save intermediate frames from a trained model.")
     # parser.add_argument('--model_path', type=str, required=True, help='Path to the trained model file.')
     # parser.add_argument('--data_dir', type=str, required=True, help='Directory to save the output frames.')
-    parser.add_argument('--lin_sample_num', type=int, default=100, help='Number of intermediate frames to generate.')
+    parser.add_argument('--lin_sample_num', type=int, default=25, help='Number of intermediate frames to generate.')
     parser.add_argument('--dataset', type=str, required=True, help='Dataset name.')
+    parser.add_argument('--data_dir', type=str, required=True, help='Path.')
     parser.add_argument('--p', default=1.0, type=float)
     parser.add_argument('--W', default=512, type=int)
     parser.add_argument('--D', default=8, type=int)
@@ -102,6 +103,7 @@ def parse_args():
     parser.add_argument('--frame_id', type=int, help='The frame id to use.')
     parser.add_argument('--iter', type=int, help='The interation number.')
     parser.add_argument('--ds', type=int, default=None, help='Downsample.')
+    parser.add_argument('--ckpt_dir', type=str, help='Model_dir.')
     return parser.parse_args()
 
 if __name__ == '__main__':

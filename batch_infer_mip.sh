@@ -2,14 +2,15 @@
 
 # Define dataset details
 data_dir="/home/ubuntu/dataset_for_A100"
-dataset="dynerf"
-configs=('none')
+dataset="mipnerf360"
+configs=(none)
 exp_names=('none')
-frame_id=50
+frame_id=0
 
 # Categories and camera pairs
-CATEGORIES=("coffee_martini" "cook_spinach" "cut_roasted_beef" "flame_salmon_1" "flame_steak" "sear_steak")
-declare -A CAMERA_PAIRS=( ["08"]="09" ["11"]="12" ["18"]="19" ["19"]="20" )
+CATEGORIES=("bicycle" "bonsai" "counter" "garden" "kitchen" "room")
+declare -A CAMERA_PAIRS=( ["01"]="02" ["02"]="03" ["03"]="04" ["11"]="12" ["12"]="13" ["13"]="14" ["15"]="16" )
+
 
 # cd ..
 
@@ -41,6 +42,7 @@ for config_idx in "${!configs[@]}"; do
                       --im1_id "$im1_id" \
                       --iter 100000\
                       --frame_id "$frame_id" 
+                      
     done
   done
 done

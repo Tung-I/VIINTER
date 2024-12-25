@@ -2,14 +2,16 @@
 
 # Define dataset details
 data_dir="/home/ubuntu/dataset_for_A100"
-dataset="dynerf"
+dataset="llff"
 configs=('none')
 exp_names=('none')
-frame_id=50
+frame_id=0
 
 # Categories and camera pairs
-CATEGORIES=("coffee_martini" "cook_spinach" "cut_roasted_beef" "flame_salmon_1" "flame_steak" "sear_steak")
-declare -A CAMERA_PAIRS=( ["08"]="09" ["11"]="12" ["18"]="19" ["19"]="20" )
+CATEGORIES=("fern" "flower" "fortress" "horns" "leaves" "orchids" "room" "trex")
+declare -A CAMERA_PAIRS=( ["03"]="04" ["09"]="10" ["03"]="05" ["09"]="11" )
+# declare -A CAMERA_PAIRS=( ["03"]="04" ["09"]="10" )
+
 
 # cd ..
 
@@ -21,6 +23,7 @@ for config_idx in "${!configs[@]}"; do
   for category in "${CATEGORIES[@]}"; do
     for im0_id in "${!CAMERA_PAIRS[@]}"; do
       im1_id="${CAMERA_PAIRS[$im0_id]}"
+      
       
       python infer.py  --ckpt_dir "/home/ubuntu/exps_done" \
                       --data_dir "$data_dir" \
@@ -41,6 +44,7 @@ for config_idx in "${!configs[@]}"; do
                       --im1_id "$im1_id" \
                       --iter 100000\
                       --frame_id "$frame_id" 
+                      
     done
   done
 done
